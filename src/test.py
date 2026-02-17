@@ -8,6 +8,11 @@ from split_nodes_delimiter import split_nodes_delimiter
 from extract import extract_markdown_images, extract_markdown_links
 from split_nodes import split_nodes_image, split_nodes_link
 from text_to_textnode import text_to_textnodes
+from split_blocks import markdown_to_blocks
+from block_type import block_to_block_type, BlockType
+from markdown_to_htmlnode import markdown_to_html_node
+from extract_title import extract_title
+from generate_page import generate_page
 
 class TestHTMLNode(unittest.TestCase):
 
@@ -180,6 +185,50 @@ class TestHTMLNode(unittest.TestCase):
         # Case 1: Text found
         text = "This is text with a **bold phrase** and a [link](https://www.boot.dev)"
         self.assertEqual(text_to_textnodes(text), [TextNode("This is text with a ", TextType.TEXT), TextNode("bold phrase", TextType.BOLD), TextNode(" and a ", TextType.TEXT), TextNode("link", TextType.LINK, "https://www.boot.dev")])
+
+    def test_markdown_to_blocks(self):
+        # Case 0: No blocks -> return empty list
+        markdown = ""
+        self.assertEqual(markdown_to_blocks(markdown), [])
+
+        # Case 1: Blocks found
+        markdown = "Hello\n\nWorld"
+        self.assertEqual(markdown_to_blocks(markdown), ["Hello", "World"])
+    
+    def test_block_to_block_type(self):
+        self.assertEqual(block_to_block_type(""), BlockType.PARAGRAPH)
+        self.assertEqual(block_to_block_type("Hello"), BlockType.PARAGRAPH)
+        self.assertEqual(block_to_block_type("# Hello"), BlockType.HEADING)
+        self.assertEqual(block_to_block_type("```\nHello\n```"), BlockType.CODE)
+        self.assertEqual(block_to_block_type("> Hello"), BlockType.QUOTE)
+        self.assertEqual(block_to_block_type("- Hello"), BlockType.UNORDERED_LIST)
+        self.assertEqual(block_to_block_type("1. Hello"), BlockType.ORDERED_LIST)
+        self.assertEqual(block_to_block_type("Hello\n\nWorld"), BlockType.PARAGRAPH)
+
+    def test_markdown_to_html_node(self):
+        # Case 0: No markdown -> return empty node
+        markdown = ""
+        self.assertEqual(markdown_to_html_node(markdown), ParentNode("div", []))
+
+        # Case 1: Heading found
+        markdown = "# Hello"
+        self.assertEqual(markdown_to_html_node(markdown), ParentNode("div", [ParentNode("h1", [LeafNode(None, "Hello")])]))
+    
+    def test_extract_title(self):
+        self.assertEqual(extract_title("# Hello"), "Hello")
+        self.assertEqual(extract_title("# Hello\n\nWorld"), "Hello")
+        self.assertEqual(extract_title("# Hello\nWorld"), "Hello")
+        self.assertEqual(extract_title("Hello\n\n# World"), "World")
+        self.assertEqual(extract_title("Hello\n# World"), "World")
+        self.assertEqual(extract_title("Hello\nWorld"), "Hello")
+        self.assertEqual(extract_title("Hello"), "Hello")
+        self.assertEqual(extract_title(""), "")
+
+    def test_generate_page(self):
+        generate_page("content/index.md", "template.html", "public/index.html")
+        with open("public/index.html", "r") as file:
+            html = file.read()
+        self.assertIn("Tolkien Fan Club", html)
 
 if __name__ == "__main__":
     unittest.main()
